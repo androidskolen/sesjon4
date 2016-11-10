@@ -1,53 +1,33 @@
 package no.bouvet.androidskolen.nearbycontacts;
 
-import android.app.Activity;
 import android.app.FragmentTransaction;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentSender;
-import android.content.SharedPreferences;
+import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import android.os.IBinder;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
-
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.nearby.messages.BleSignal;
-import com.google.android.gms.nearby.messages.Distance;
-import com.google.android.gms.nearby.messages.Message;
-import com.google.android.gms.nearby.messages.MessageListener;
-import com.google.android.gms.nearby.messages.Strategy;
-import com.google.android.gms.nearby.messages.SubscribeCallback;
-import com.google.android.gms.nearby.messages.SubscribeOptions;
-import com.google.android.gms.nearby.messages.devices.NearbyDevice;
 
 import no.bouvet.androidskolen.nearbycontacts.models.NearbyContactsListViewModel;
 import no.bouvet.androidskolen.nearbycontacts.models.OwnContactViewModel;
 import no.bouvet.androidskolen.nearbycontacts.models.Contact;
 import no.bouvet.androidskolen.nearbycontacts.models.SelectedContactViewModel;
+import no.bouvet.androidskolen.nearbycontacts.services.NearbyService;
 import no.bouvet.androidskolen.nearbycontacts.views.AboutView;
 
-public class NearbyActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, ContactSelectedListener {
+public class NearbyActivity extends AppCompatActivity implements ContactSelectedListener {
 
     private final static String TAG = NearbyActivity.class.getSimpleName();
-    private final static int REQUEST_RESOLVE_ERROR = 1;
-
-    private MessageListener messageListener;
-    private ContactDetectedListener contactDetectedListener;
-    private GoogleApiClient googleApiClient;
-    private Message activeMessage;
     private Preferences preferences;
-
-    public void setContactDetectedListener(ContactDetectedListener listener) {
-        contactDetectedListener = listener;
-    }
-
+    NearbyService mService;
+    boolean mBound = false;
+    private Contact contact;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,13 +35,14 @@ public class NearbyActivity extends AppCompatActivity implements GoogleApiClient
 
         setContentView(R.layout.activity_nearby);
 
-        setupNearbyMessageListener();
+//        setupNearbyMessageListener();
 
-        setupNearbyMessagesApi();
+//        setupNearbyMessagesApi();
+
 
         addNearbyContactsFragmentIfNotExists();
 
-        setContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
+//        setContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
 
         preferences = new Preferences();
 
@@ -79,58 +60,6 @@ public class NearbyActivity extends AppCompatActivity implements GoogleApiClient
         }
     }
 
-    private void setupNearbyMessageListener() {
-        messageListener = new com.google.android.gms.nearby.messages.MessageListener() {
-            @Override
-            public void onFound(Message message) {
-                Log.d(TAG, "[onFound]");
-                NearbyDevice[] nearbyDevices = message.zzbxl();
-
-                for (NearbyDevice nearbyDevice : nearbyDevices) {
-                    Log.d(TAG, nearbyDevice.zzbxr());
-                }
-
-                String messageAsJson = new String(message.getContent());
-                Contact contact = Contact.fromJson(messageAsJson);
-
-                String msg = "Found contact: " + contact.getName();
-                Toast toast = Toast.makeText(NearbyActivity.this, msg, Toast.LENGTH_LONG);
-                toast.show();
-
-                fireContactDetected(contact);
-            }
-
-            @Override
-            public void onDistanceChanged(Message message, Distance distance) {
-                Log.i(TAG, "Distance changed, message: " + message + ", new distance: " + distance);
-            }
-
-            @Override
-            public void onBleSignalChanged(Message message, BleSignal bleSignal) {
-                Log.i(TAG, "Message: " + message + " has new BLE signal information: " + bleSignal);
-            }
-
-            @Override
-            public void onLost(Message message) {
-                Log.d(TAG, "[onLost]");
-                String messageAsJson = new String(message.getContent());
-                String msg = "Lost sight of message: " + messageAsJson;
-                Toast toast = Toast.makeText(NearbyActivity.this, msg, Toast.LENGTH_LONG);
-                toast.show();
-
-                Contact contact = Contact.fromJson(messageAsJson);
-                fireContactLost(contact);
-            }
-        };
-    }
-
-    private void setupNearbyMessagesApi() {
-        googleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(com.google.android.gms.nearby.Nearby.MESSAGES_API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-    }
 
     @Override
     protected void onStart() {
@@ -138,14 +67,15 @@ public class NearbyActivity extends AppCompatActivity implements GoogleApiClient
 
         Log.d(TAG, "[onStart]");
 
-        Contact contact = preferences.createContactFromPreferences(getApplicationContext());
+        contact = preferences.createContactFromPreferences(getApplicationContext());
         if (contact == null) {
             // Vi dialog om at man må gå og fylle ut informasjon om seg selv.
             return;
         }
 
         OwnContactViewModel.INSTANCE.setContact(contact);
-        googleApiClient.connect();
+        Intent intent = new Intent(this, NearbyService.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
 
@@ -156,12 +86,12 @@ public class NearbyActivity extends AppCompatActivity implements GoogleApiClient
 
         Log.d(TAG, "[onStop]");
 
-        if (googleApiClient.isConnected()) {
-            unpublish();
-            unsubscribe();
-            googleApiClient.disconnect();
-            resetModels();
-        }
+//        if (googleApiClient.isConnected()) {
+//            unpublish();
+//            unsubscribe();
+//            googleApiClient.disconnect();
+//            resetModels();
+//        }
     }
 
     @Override
@@ -209,103 +139,7 @@ public class NearbyActivity extends AppCompatActivity implements GoogleApiClient
         SelectedContactViewModel.INSTANCE.reset();
     }
 
-    private void publish(Contact contact) {
 
-        Log.i(TAG, "[publish] Publishing information about contact: " + contact.getName());
-        String json = contact.toJson();
-        activeMessage = new Message(json.getBytes());
-        com.google.android.gms.nearby.Nearby.Messages.publish(googleApiClient, activeMessage);
-    }
-
-    private void unpublish() {
-
-        Log.i(TAG, "[unpublish] ");
-        if (activeMessage != null) {
-            com.google.android.gms.nearby.Nearby.Messages.unpublish(googleApiClient, activeMessage);
-            activeMessage = null;
-        }
-    }
-
-    private void subscribe() {
-        Log.i(TAG, "Subscribing.");
-
-        Strategy strategy = new Strategy.Builder().setDiscoveryMode(Strategy.DISCOVERY_MODE_DEFAULT).setTtlSeconds(Strategy.TTL_SECONDS_DEFAULT).setDistanceType(Strategy.DISTANCE_TYPE_EARSHOT).build();
-
-        SubscribeCallback callback = new SubscribeCallback() {
-            @Override
-            public void onExpired() {
-                super.onExpired();
-                Log.d(TAG, "[onExpired] subscribing anew...");
-                subscribe();
-            }
-        };
-        SubscribeOptions options = new SubscribeOptions.Builder().setStrategy(strategy).setCallback(callback).build();
-
-        com.google.android.gms.nearby.Nearby.Messages.subscribe(googleApiClient, messageListener, options);
-    }
-
-    private void unsubscribe() {
-        Log.i(TAG, "[unsubscribe].");
-        com.google.android.gms.nearby.Nearby.Messages.unsubscribe(googleApiClient, messageListener);
-    }
-
-
-    private void publishContactInternally() {
-        Log.d(TAG, "[publishContactInternally]");
-        if (googleApiClient.isConnected()) {
-            publish(OwnContactViewModel.INSTANCE.getContact());
-            subscribe();
-        }
-    }
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        Log.d(TAG, "[onConnected]");
-        publishContactInternally();
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-        Log.e(TAG, "GoogleApiClient disconnected with cause: " + i);
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult result) {
-        if (result.hasResolution()) {
-            try {
-                result.startResolutionForResult(this, REQUEST_RESOLVE_ERROR);
-            } catch (IntentSender.SendIntentException e) {
-                Log.e(TAG, "GoogleApiClient connection failed", e);
-            }
-        } else {
-            Log.e(TAG, "GoogleApiClient connection failed");
-        }
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_RESOLVE_ERROR) {
-            if (resultCode == Activity.RESULT_OK) {
-                googleApiClient.connect();
-            } else {
-                Log.e(TAG, "GoogleApiClient connection failed. Unable to resolve.");
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
-    }
-
-    private void fireContactDetected(Contact contact) {
-        if (contactDetectedListener != null) {
-            contactDetectedListener.onContactDetected(contact);
-        }
-    }
-
-    private void fireContactLost(Contact contact) {
-        if (contactDetectedListener != null) {
-            contactDetectedListener.onContactLost(contact);
-        }
-    }
 
     @Override
     public void onContactSelected(Contact contact) {
@@ -324,4 +158,21 @@ public class NearbyActivity extends AppCompatActivity implements GoogleApiClient
         SelectedContactViewModel.INSTANCE.setSelectedContact(contact);
 
     }
+    private ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            Log.i(TAG, "Bound to service");
+            NearbyService.NearbyBinder binder = (NearbyService.NearbyBinder) service;
+            mService = binder.getService();
+            mBound = true;
+            mService.publishContact();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBound = false;
+        }
+    };
 }

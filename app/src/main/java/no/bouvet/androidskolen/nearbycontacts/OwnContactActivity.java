@@ -1,25 +1,33 @@
 package no.bouvet.androidskolen.nearbycontacts;
 
 import android.app.DialogFragment;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.ThumbnailUtils;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Switch;
 
 import java.io.ByteArrayOutputStream;
 
 import no.bouvet.androidskolen.nearbycontacts.models.Contact;
 import no.bouvet.androidskolen.nearbycontacts.models.OwnContactViewModel;
+import no.bouvet.androidskolen.nearbycontacts.services.NearbyService;
 
-public class OwnContactActivity extends AppCompatActivity implements View.OnClickListener {
+public class OwnContactActivity extends AppCompatActivity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
 
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private EditText userNameEditText;
@@ -27,6 +35,8 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     private EditText userTelephoneEditText;
     private ImageView userPicture;
     private Preferences preferences;
+    NearbyService mService;
+    boolean mBound;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,14 +44,14 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
 
         setContentView(R.layout.activity_own_contact);
 
-        Button startNearbyActivityButton = (Button) findViewById(R.id.start_nearby_activity_button);
-        startNearbyActivityButton.setOnClickListener(this);
-
         Button takePictureButton = (Button) findViewById(R.id.take_picture_button);
         takePictureButton.setOnClickListener(this);
 
         Button removePictureButton = (Button) findViewById(R.id.remove_picture_button);
         removePictureButton.setOnClickListener(this);
+
+        Switch publishSwitch = (Switch) findViewById(R.id.publish_toggle);
+        publishSwitch.setOnCheckedChangeListener(this);
 
         userNameEditText = (EditText) findViewById(R.id.user_name_editText);
         userEmailEditText = (EditText) findViewById(R.id.user_email_editText);
@@ -49,6 +59,9 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
         userPicture = (ImageView) findViewById(R.id.user_picture_imageView);
 
         preferences = new Preferences();
+
+        Intent intent = new Intent(this, NearbyService.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -76,9 +89,6 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
-            case R.id.start_nearby_activity_button:
-                handlePublish();
-                break;
             case R.id.take_picture_button:
                 startImageCaptureActivityForResult();
                 break;
@@ -88,12 +98,32 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        switch (buttonView.getId()) {
+            case R.id.publish_toggle:
+                if (isChecked) {
+                    handlePublish();
+                } else {
+                    mService.unPublishContact();
+                }
+                break;
+            case R.id.subscribe_toggle:
+                if (isChecked) {
+                    mService.subscribeToMessages();
+                } else {
+                    mService.unsubscribeToMessages();
+                }
+                break;
+        }
+    }
+
     private void handlePublish() {
         if (!isUserPictureSet()) {
             startNoPictureDialogFragment();
         } else {
             saveContact();
-            startNearbyActivity();
+            mService.publishContact();
         }
     }
 
@@ -172,4 +202,22 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
             return "";
         }
     }
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            NearbyService.NearbyBinder binder = (NearbyService.NearbyBinder) service;
+            mService = binder.getService();
+            mBound = true;
+            mService.publishContact();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBound = false;
+        }
+    };
+
 }
