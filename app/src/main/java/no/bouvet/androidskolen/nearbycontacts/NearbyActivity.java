@@ -34,18 +34,9 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_nearby);
-
-//        setupNearbyMessageListener();
-
-//        setupNearbyMessagesApi();
-
-
         addNearbyContactsFragmentIfNotExists();
 
-//        setContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
-
         preferences = new Preferences();
-
     }
 
     private void addNearbyContactsFragmentIfNotExists() {
@@ -59,7 +50,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             fragmentTransaction.commit();
         }
     }
-
 
     @Override
     protected void onStart() {
@@ -78,20 +68,14 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
-
-
     @Override
     protected void onStop() {
         super.onStop();
-
         Log.d(TAG, "[onStop]");
-
-//        if (googleApiClient.isConnected()) {
-//            unpublish();
-//            unsubscribe();
-//            googleApiClient.disconnect();
-//            resetModels();
-//        }
+        if (mBound) {
+            unbindService(mConnection);
+            mBound = false;
+        }
     }
 
     @Override
@@ -139,8 +123,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         SelectedContactViewModel.INSTANCE.reset();
     }
 
-
-
     @Override
     public void onContactSelected(Contact contact) {
         Log.d(TAG, "Contact selected: " + contact.getName());
@@ -154,10 +136,9 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             fragmentTransaction.addToBackStack(null);
             fragmentTransaction.commit();
         }
-
         SelectedContactViewModel.INSTANCE.setSelectedContact(contact);
-
     }
+
     private ServiceConnection mConnection = new ServiceConnection() {
 
         @Override
@@ -168,6 +149,12 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             mService = binder.getService();
             mBound = true;
             mService.publishContact();
+            if (OwnContactViewModel.INSTANCE.getContact().isPublish()) {
+                Log.i(TAG, "Bound to NearbyService.... publishing contact information");
+                mService.publishContact();
+            } else {
+                Log.i(TAG, "Bound to NearbyService.... keeping contact information secret");
+            }
         }
 
         @Override

@@ -13,7 +13,6 @@ import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Base64;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -34,6 +33,8 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     private EditText userEmailEditText;
     private EditText userTelephoneEditText;
     private ImageView userPicture;
+    private Switch publishSwitch;
+
     private Preferences preferences;
     NearbyService mService;
     boolean mBound;
@@ -50,7 +51,10 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
         Button removePictureButton = (Button) findViewById(R.id.remove_picture_button);
         removePictureButton.setOnClickListener(this);
 
-        Switch publishSwitch = (Switch) findViewById(R.id.publish_toggle);
+        Button publishContactButton = (Button) findViewById(R.id.publish_button);
+        publishContactButton.setOnClickListener(this);
+
+        publishSwitch = (Switch) findViewById(R.id.publish_toggle);
         publishSwitch.setOnCheckedChangeListener(this);
 
         userNameEditText = (EditText) findViewById(R.id.user_name_editText);
@@ -60,14 +64,21 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
 
         preferences = new Preferences();
 
-        Intent intent = new Intent(this, NearbyService.class);
+        Intent intent = new Intent(getApplicationContext(), NearbyService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        // Dersom vi har bundet oss til servicen gjøre vi dette her, ellers så blir dette
+        // gjort i onServiceConnected() callbacket.
+        if (mBound) {
+            populateUiFromPrefrences();
+        }
+    }
 
+    private void populateUiFromPrefrences() {
         Contact contact = preferences.createContactFromPreferences(getApplicationContext());
         if (contact != null) {
             userNameEditText.setText(contact.getName());
@@ -76,14 +87,18 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
             if (contact.getPicture() != null) {
                 userPicture.setImageBitmap(contact.getPicture());
             }
+            publishSwitch.setChecked(contact.isPublish());
         }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-
         preferences.saveContactToPreferences(createContactFromInput(), getApplicationContext());
+        if (mBound) {
+            unbindService(mConnection);
+            mBound = false;
+        }
     }
 
     @Override
@@ -94,6 +109,9 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
                 break;
             case R.id.remove_picture_button:
                 removePicture();
+                break;
+            case R.id.publish_button:
+                handlePublish();
                 break;
         }
     }
@@ -108,14 +126,8 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
                     mService.unPublishContact();
                 }
                 break;
-            case R.id.subscribe_toggle:
-                if (isChecked) {
-                    mService.subscribeToMessages();
-                } else {
-                    mService.unsubscribeToMessages();
-                }
-                break;
         }
+        saveContact();
     }
 
     private void handlePublish() {
@@ -181,7 +193,8 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
         String email = userEmailEditText.getText().toString();
         String telephone = userTelephoneEditText.getText().toString();
         String picture = getEncodedPicture();
-        return new Contact(name, email, telephone, picture);
+        boolean publish = publishSwitch.isChecked();
+        return new Contact(name, email, telephone, picture, publish);
     }
 
     private String getEncodedPicture() {
@@ -211,7 +224,7 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
             NearbyService.NearbyBinder binder = (NearbyService.NearbyBinder) service;
             mService = binder.getService();
             mBound = true;
-            mService.publishContact();
+            populateUiFromPrefrences();
         }
 
         @Override

@@ -19,9 +19,6 @@
     <string name="no_picture_dialog_message">Please include a picture</string>
     <string name="no_picture_dialog_title">No picture!!</string>
     <string name="nope">Nope</string>
-    <string name="publicText">Public</string>
-    <string name="privateText">Private</string>
     <string name="publish">Publish</string>
-    <string name="subscribe">Subscribe</string>
 
 </resources>

@@ -18,7 +18,6 @@ import com.google.android.gms.nearby.messages.BleSignal;
 import com.google.android.gms.nearby.messages.Distance;
 import com.google.android.gms.nearby.messages.Message;
 import com.google.android.gms.nearby.messages.MessageListener;
-import com.google.android.gms.nearby.messages.PublishCallback;
 import com.google.android.gms.nearby.messages.Strategy;
 import com.google.android.gms.nearby.messages.SubscribeCallback;
 import com.google.android.gms.nearby.messages.SubscribeOptions;
@@ -29,7 +28,6 @@ import no.bouvet.androidskolen.nearbycontacts.models.Contact;
 import no.bouvet.androidskolen.nearbycontacts.models.NearbyContactsListViewModel;
 import no.bouvet.androidskolen.nearbycontacts.models.OwnContactViewModel;
 
-import static android.app.Activity.RESULT_OK;
 
 /**
  * Tjeneste som kan brukes for å publisere og abonnere på kontakter.
@@ -104,6 +102,8 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
                 Contact contact = Contact.fromJson(messageAsJson);
 
                 String msg = "Found contact: " + contact.getName();
+
+                // Er dette lov?
                 Toast toast = Toast.makeText(NearbyService.this, msg, Toast.LENGTH_LONG);
                 toast.show();
 
@@ -143,6 +143,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     }
 
     private void publish(Contact contact) {
+        unpublish();
         Log.i(TAG, "[publish] Publishing information about contact: " + contact.getName());
         String json = contact.toJson();
         activeMessage = new Message(json.getBytes());

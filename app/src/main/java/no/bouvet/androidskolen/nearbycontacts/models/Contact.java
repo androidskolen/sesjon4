@@ -16,12 +16,14 @@ public class Contact {
     private final String email;
     private final String telephone;
     private String base64EncodedPicture;
+    private boolean publish;
 
-    public Contact(String name, String email, String telephone, String picture) {
+    public Contact(String name, String email, String telephone, String picture, boolean publish) {
         this.name = name;
         this.email = email;
         this.telephone = telephone;
         this.base64EncodedPicture = picture;
+        this.publish = publish;
     }
 
     public String getName() {
@@ -50,6 +52,14 @@ public class Contact {
 
     public void setPicture(String picture) {
         this.base64EncodedPicture = "";
+    }
+
+    public boolean isPublish() {
+        return publish;
+    }
+
+    public void setPublish(boolean publish) {
+        this.publish = publish;
     }
 
     @Override
