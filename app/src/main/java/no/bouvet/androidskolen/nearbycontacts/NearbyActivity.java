@@ -1,5 +1,6 @@
 package no.bouvet.androidskolen.nearbycontacts;
 
+import android.app.ActivityManager;
 import android.app.FragmentTransaction;
 import android.content.ComponentName;
 import android.content.Context;
@@ -28,6 +29,7 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
     NearbyService mService;
     boolean mBound = false;
     private Contact contact;
+    private Intent intent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,9 +37,24 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
 
         setContentView(R.layout.activity_nearby);
         addNearbyContactsFragmentIfNotExists();
-
         preferences = new Preferences();
+
+        intent = new Intent(this, NearbyService.class);
+        if (!isServiceRunning(NearbyService.class))
+            startService(intent);
     }
+
+    private boolean isServiceRunning(Class<?> serviceClass) {
+        ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+
+        for (ActivityManager.RunningServiceInfo service : activityManager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     private void addNearbyContactsFragmentIfNotExists() {
 
@@ -64,7 +81,7 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         }
 
         OwnContactViewModel.INSTANCE.setContact(contact);
-        Intent intent = new Intent(this, NearbyService.class);
+
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
@@ -94,9 +111,17 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             case R.id.action_show_about:
                 showAboutDialog();
                 return true;
+            case R.id.action_goto_contact_log:
+                gotoContactLogActivity();
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void gotoContactLogActivity() {
+        Intent intent = new Intent(this, ContactLogActivity.class);
+        startActivity(intent);
     }
 
     private void showAboutDialog() {
@@ -148,13 +173,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             NearbyService.NearbyBinder binder = (NearbyService.NearbyBinder) service;
             mService = binder.getService();
             mBound = true;
-            mService.publishContact();
-            if (OwnContactViewModel.INSTANCE.getContact().isPublish()) {
-                Log.i(TAG, "Bound to NearbyService.... publishing contact information");
-                mService.publishContact();
-            } else {
-                Log.i(TAG, "Bound to NearbyService.... keeping contact information secret");
-            }
         }
 
         @Override

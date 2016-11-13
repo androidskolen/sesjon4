@@ -7,6 +7,8 @@ import android.util.Log;
 
 import com.google.gson.Gson;
 
+import java.util.Date;
+
 
 public class Contact {
 
@@ -16,6 +18,7 @@ public class Contact {
     private final String email;
     private final String telephone;
     private String base64EncodedPicture;
+    private Date dateDiscovered;
     private boolean publish;
 
     public Contact(String name, String email, String telephone, String picture, boolean publish) {
@@ -44,6 +47,14 @@ public class Contact {
         } else {
             return null;
         }
+    }
+
+    public Date getDateDiscovered() {
+        return dateDiscovered;
+    }
+
+    public void setDateDiscovered(Date dateDiscovered) {
+        this.dateDiscovered = dateDiscovered;
     }
 
     public String getEncodedPicture() {

@@ -20,5 +20,10 @@
     <string name="no_picture_dialog_title">No picture!!</string>
     <string name="nope">Nope</string>
     <string name="publish">Publish</string>
+    <string name="title_activity_contact_log">ContactLogActivity</string>
+    <string name="action_goto_contact_log">Contact Log</string>
+    <string name="contactLog_name">Contact Log</string>
+    <string name="show_distinct_contacts">Show Distinct contacts</string>
+    <string name="show_all">Show All</string>
 
 </resources>

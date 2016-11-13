@@ -23,8 +23,13 @@ import com.google.android.gms.nearby.messages.SubscribeCallback;
 import com.google.android.gms.nearby.messages.SubscribeOptions;
 import com.google.android.gms.nearby.messages.devices.NearbyDevice;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import no.bouvet.androidskolen.nearbycontacts.ContactDatabase;
 import no.bouvet.androidskolen.nearbycontacts.ContactDetectedListener;
 import no.bouvet.androidskolen.nearbycontacts.models.Contact;
+import no.bouvet.androidskolen.nearbycontacts.models.ContactLogListViewModel;
 import no.bouvet.androidskolen.nearbycontacts.models.NearbyContactsListViewModel;
 import no.bouvet.androidskolen.nearbycontacts.models.OwnContactViewModel;
 
@@ -36,7 +41,7 @@ import no.bouvet.androidskolen.nearbycontacts.models.OwnContactViewModel;
 public class NearbyService extends Service implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     private MessageListener messageListener;
-    private ContactDetectedListener contactDetectedListener;
+    private List<ContactDetectedListener> contactDetectedListeners = new ArrayList<>();
     private GoogleApiClient googleApiClient;
     private Message activeMessage;
     private Contact contact;
@@ -45,27 +50,35 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     private final static int REQUEST_RESOLVE_ERROR = 1;
 
     private final IBinder mBinder = new NearbyBinder();
+    private ContactDatabase contactDatabase;
 
     public NearbyService() {
         super();
     }
 
-    public void setContactDetectedListener(ContactDetectedListener listener) {
-        contactDetectedListener = listener;
+    public void addContactDetectedListener(ContactDetectedListener listener) {
+        contactDetectedListeners.add(listener);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Toast.makeText(this, "service starting", Toast.LENGTH_SHORT).show();
+        addContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
+        addContactDetectedListener(ContactLogListViewModel.INSTANCE);
+        setupNearbyMessageListener();
+        setupNearbyMessagesApi();
+        googleApiClient.connect();
+        contactDatabase = new ContactDatabase(getApplicationContext());
+        return START_STICKY;
     }
 
     @Override
     public IBinder onBind(Intent intent) {
         Log.i(TAG, "NearbyService bound");
-        setContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
-        setupNearbyMessageListener();
-        setupNearbyMessagesApi();
-        googleApiClient.connect();
         return mBinder;
     }
 
-
-    // Public metoder utgjør interfacet mot tjenesten.
+    // Public metoder utgjør interfacet vi tilbyr ut fra tjenesten.
 
     public void publishContact() {
         Log.i(TAG, "Publishing contact");
@@ -103,7 +116,8 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
 
                 String msg = "Found contact: " + contact.getName();
 
-                // Er dette lov?
+                contactDatabase.insertContact(contact);
+
                 Toast toast = Toast.makeText(NearbyService.this, msg, Toast.LENGTH_LONG);
                 toast.show();
 
@@ -194,6 +208,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     private void publishContactInternally() {
         Log.i(TAG, "[publishContactInternally]");
         if (googleApiClient.isConnected()) {
+            Log.i(TAG, "googleApiClient not connected, can not publish");
             publish(OwnContactViewModel.INSTANCE.getContact());
             subscribe();
         }
@@ -204,6 +219,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         Log.i(TAG, "[onConnected]");
+        publishContactInternally();
     }
 
     @Override
@@ -221,14 +237,14 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     }
 
     private void fireContactDetected(Contact contact) {
-        if (contactDetectedListener != null) {
-            contactDetectedListener.onContactDetected(contact);
+        for (ContactDetectedListener listener : contactDetectedListeners) {
+            listener.onContactDetected(contact);
         }
     }
 
     private void fireContactLost(Contact contact) {
-        if (contactDetectedListener != null) {
-            contactDetectedListener.onContactLost(contact);
+        for (ContactDetectedListener listener : contactDetectedListeners) {
+            listener.onContactLost(contact);
         }
     }
 

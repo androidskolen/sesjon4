@@ -15,4 +15,10 @@
         app:showAsAction="never"
         />
 
+    <item
+        android:id="@+id/action_goto_contact_log"
+        android:title="@string/action_goto_contact_log"
+        app:showAsAction="never"
+        />
+
 </menu>

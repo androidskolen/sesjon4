@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="no.bouvet.androidskolen.nearbycontacts">
+    package="no.bouvet.androidskolen.nearbycontacts">
 
     <application
         android:allowBackup="true"
@@ -8,23 +8,25 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
         <meta-data
             android:name="com.google.android.nearby.messages.API_KEY"
             android:value="AIzaSyCHSJyioLNN_xMvSGlEMLOOCMd9Zps1BU0" />
 
         <activity
-            android:parentActivityName=".NearbyActivity"
+            android:name=".OwnContactActivity"
             android:label="@string/ownActivity_name"
-            android:name=".OwnContactActivity">
-        </activity>
-
+            android:parentActivityName=".NearbyActivity"></activity>
+        <activity
+            android:name=".ContactLogActivity"
+            android:label="@string/contactLog_name"
+            android:parentActivityName=".NearbyActivity"></activity>
         <activity
             android:name=".NearbyActivity"
             android:label="@string/nearby_contacts_activity_name">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
