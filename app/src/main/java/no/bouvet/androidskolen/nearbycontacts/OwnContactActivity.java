@@ -13,6 +13,7 @@ import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -28,6 +29,7 @@ import no.bouvet.androidskolen.nearbycontacts.services.NearbyService;
 
 public class OwnContactActivity extends AppCompatActivity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
 
+    private final static String TAG = OwnContactActivity.class.getSimpleName();
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private EditText userNameEditText;
     private EditText userEmailEditText;
@@ -71,23 +73,27 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     @Override
     protected void onStart() {
         super.onStart();
-        // Dersom vi har bundet oss til servicen gjøre vi dette her, ellers så blir dette
-        // gjort i onServiceConnected() callbacket.
-        if (mBound) {
-            populateUiFromPrefrences();
-        }
+        populateUiFromPrefrences();
     }
 
     private void populateUiFromPrefrences() {
-        Contact contact = preferences.createContactFromPreferences(getApplicationContext());
-        if (contact != null) {
-            userNameEditText.setText(contact.getName());
-            userEmailEditText.setText(contact.getEmail());
-            userTelephoneEditText.setText(contact.getTelephone());
-            if (contact.getPicture() != null) {
-                userPicture.setImageBitmap(contact.getPicture());
+        // Vi kan ikke populere UI før vi har bundet oss til NearbyService. Dette kommer av at
+        // vi risikerer at kallet til publicSwitch.setChecked() vil igjen føre til
+        // en onCheckedChanged som igjen vil forsøke å kalle enten mService.unPublishContact eller
+        // mService.publisContact. Dette vil feile før vi har bundet oss til tjenesten.
+        if (mBound) {
+            Contact contact = preferences.createContactFromPreferences(getApplicationContext());
+            if (contact != null) {
+                userNameEditText.setText(contact.getName());
+                userEmailEditText.setText(contact.getEmail());
+                userTelephoneEditText.setText(contact.getTelephone());
+                if (contact.getPicture() != null) {
+                    userPicture.setImageBitmap(contact.getPicture());
+                }
+                publishSwitch.setChecked(contact.isPublish());
             }
-            publishSwitch.setChecked(contact.isPublish());
+        } else {
+            Log.i(TAG, "Could not populateUiFromPreferences since service binding is not complete.");
         }
     }
 
@@ -217,7 +223,6 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     }
 
     private ServiceConnection mConnection = new ServiceConnection() {
-
         @Override
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {

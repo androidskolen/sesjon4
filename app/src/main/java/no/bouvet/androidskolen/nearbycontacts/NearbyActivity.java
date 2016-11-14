@@ -28,7 +28,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
     private Preferences preferences;
     NearbyService mService;
     boolean mBound = false;
-    private Contact contact;
     private Intent intent;
 
     @Override
@@ -40,8 +39,9 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         preferences = new Preferences();
 
         intent = new Intent(this, NearbyService.class);
-        if (!isServiceRunning(NearbyService.class))
+        if (!isServiceRunning(NearbyService.class)) {
             startService(intent);
+        }
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
@@ -74,12 +74,11 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
 
         Log.d(TAG, "[onStart]");
 
-        contact = preferences.createContactFromPreferences(getApplicationContext());
+        Contact contact = preferences.createContactFromPreferences(getApplicationContext());
         if (contact == null) {
             // Vi dialog om at man må gå og fylle ut informasjon om seg selv.
             return;
         }
-
         OwnContactViewModel.INSTANCE.setContact(contact);
 
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
@@ -93,12 +92,14 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             unbindService(mConnection);
             mBound = false;
         }
+        if (!isServiceRunning(NearbyService.class)) {
+            stopService(intent);
+        }
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.nearby_activity_actions, menu);
-
         return true;
     }
 
@@ -115,13 +116,22 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
                 gotoContactLogActivity();
                 return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
-    private void gotoContactLogActivity() {
-        Intent intent = new Intent(this, ContactLogActivity.class);
-        startActivity(intent);
+    @Override
+    public void onContactSelected(Contact contact) {
+        Log.d(TAG, "Contact selected: " + contact.getName());
+
+        SelectedContactFragment selectedContactFragment = (SelectedContactFragment) getFragmentManager().findFragmentById(R.id.selected_contact_fragment);
+        if (selectedContactFragment == null || !selectedContactFragment.isInLayout()) {
+            SelectedContactFragment newFragment = new SelectedContactFragment();
+            FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
+            fragmentTransaction.replace(R.id.fragment_holder, newFragment);
+            fragmentTransaction.addToBackStack(null);
+            fragmentTransaction.commit();
+        }
+        SelectedContactViewModel.INSTANCE.setSelectedContact(contact);
     }
 
     private void showAboutDialog() {
@@ -134,8 +144,12 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
                     }
                 })
                 .create();
-
         dialog.show();
+    }
+
+    private void gotoContactLogActivity() {
+        Intent intent = new Intent(this, ContactLogActivity.class);
+        startActivity(intent);
     }
 
     private void gotoOwnContactActivity() {
@@ -148,24 +162,7 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         SelectedContactViewModel.INSTANCE.reset();
     }
 
-    @Override
-    public void onContactSelected(Contact contact) {
-        Log.d(TAG, "Contact selected: " + contact.getName());
-
-        SelectedContactFragment selectedContactFragment = (SelectedContactFragment) getFragmentManager().findFragmentById(R.id.selected_contact_fragment);
-
-        if (selectedContactFragment == null || !selectedContactFragment.isInLayout()) {
-            SelectedContactFragment newFragment = new SelectedContactFragment();
-            FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
-            fragmentTransaction.replace(R.id.fragment_holder, newFragment);
-            fragmentTransaction.addToBackStack(null);
-            fragmentTransaction.commit();
-        }
-        SelectedContactViewModel.INSTANCE.setSelectedContact(contact);
-    }
-
     private ServiceConnection mConnection = new ServiceConnection() {
-
         @Override
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {

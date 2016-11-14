@@ -9,12 +9,8 @@ import android.support.annotation.NonNull;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import no.bouvet.androidskolen.nearbycontacts.adapers.ContactLogAdapter;
 import no.bouvet.androidskolen.nearbycontacts.models.Contact;
 
 public class ContactDatabase extends SQLiteOpenHelper {
@@ -32,17 +28,13 @@ public class ContactDatabase extends SQLiteOpenHelper {
                     "email text, " +
                     "photo text)";
 
-    private final Context mHelperContext;
-    private SQLiteDatabase mDatabase;
-
     public ContactDatabase(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
-        mHelperContext = context;
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        mDatabase = db;
+        SQLiteDatabase mDatabase = db;
         mDatabase.execSQL(TABLE_CREATE);
     }
 
@@ -63,7 +55,6 @@ public class ContactDatabase extends SQLiteOpenHelper {
     }
 
     public List<Contact> getLastEntryForAllContacts() {
-        SQLiteDatabase db = this.getReadableDatabase();
         String query = "select c.name, c.time_stamp " +
                 "from " + CONTACTS_TABLE_NAME + " c " +
                 "inner join (" +

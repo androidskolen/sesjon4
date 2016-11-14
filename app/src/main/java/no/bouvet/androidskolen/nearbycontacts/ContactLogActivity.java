@@ -2,8 +2,6 @@ package no.bouvet.androidskolen.nearbycontacts;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.view.View;
-import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ListView;
 import android.widget.Switch;
@@ -19,7 +17,6 @@ import no.bouvet.androidskolen.nearbycontacts.models.ModelUpdateListener;
 public class ContactLogActivity extends AppCompatActivity implements ModelUpdateListener, CompoundButton.OnCheckedChangeListener {
 
     private ContactDatabase contactDatabase;
-    private ListView listView;
     private ContactLogAdapter contactsLogAdapter;
     private Switch showAllSwitch;
 
@@ -35,9 +32,9 @@ public class ContactLogActivity extends AppCompatActivity implements ModelUpdate
         showAllSwitch.setOnCheckedChangeListener(this);
 
         TextView logCount = (TextView) findViewById(R.id.log_count);
-        logCount.setText("Number of entries in db" + contactLog.size());
+        logCount.setText("Number of entries in db " + contactLog.size());
 
-        listView = (ListView) findViewById(R.id.contact_history_list_view);
+        ListView listView = (ListView) findViewById(R.id.contact_history_list_view);
         contactsLogAdapter = new ContactLogAdapter(getApplicationContext());
         listView.setAdapter(contactsLogAdapter);
 
