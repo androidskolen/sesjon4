@@ -133,11 +133,12 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
             public void onLost(Message message) {
                 Log.i(TAG, "[onLost]");
                 String messageAsJson = new String(message.getContent());
-                String msg = "Lost sight of message: " + messageAsJson;
+
+                Contact contact = Contact.fromJson(messageAsJson);
+                String msg = "Lost contact: " + contact.getName();
                 Toast toast = Toast.makeText(NearbyService.this, msg, Toast.LENGTH_LONG);
                 toast.show();
 
-                Contact contact = Contact.fromJson(messageAsJson);
                 fireContactLost(contact);
             }
         };
