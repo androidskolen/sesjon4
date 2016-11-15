@@ -61,12 +61,14 @@ public class ContactDatabase extends SQLiteOpenHelper {
                 "    select name, max(time_stamp) as MaxDate" +
                 "    from "+ CONTACTS_TABLE_NAME +
                 "    group by name" +
-                ") cm on c.name = cm.name and c.time_stamp = cm.MaxDate";
+                ") cm on c.name = cm.name and c.time_stamp = cm.MaxDate " +
+                " ORDER BY time_stamp desc";
         return executeQuery(query);
     }
 
     public List<Contact> getAllContactsEntries() {
-        String query = "select * from " + CONTACTS_TABLE_NAME;
+        String query = "select * from " + CONTACTS_TABLE_NAME +
+                " ORDER BY time_stamp desc";
         return executeQuery(query);
     }
 
