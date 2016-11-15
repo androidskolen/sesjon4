@@ -153,7 +153,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     }
 
     private void publish(Contact contact) {
-        unpublish();
         Log.i(TAG, "[publish] Publishing information about contact: " + contact.getName());
         String json = contact.toJson();
         activeMessage = new Message(json.getBytes());
@@ -206,7 +205,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         if (googleApiClient.isConnected()) {
             Log.i(TAG, "googleApiClient not connected, can not publish");
             publish(OwnContactViewModel.INSTANCE.getContact());
-            subscribe();
+
         }
     }
 
@@ -215,12 +214,14 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         Log.i(TAG, "[onConnected]");
+        subscribe();
         publishContactInternally();
     }
 
     @Override
     public void onConnectionSuspended(int i) {
         Log.e(TAG, "GoogleApiClient disconnected with cause: " + i);
+        unsubscribe();
     }
 
     @Override
