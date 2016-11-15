@@ -38,6 +38,10 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         addNearbyContactsFragmentIfNotExists();
         preferences = new Preferences();
 
+        intent = new Intent(this, NearbyService.class);
+        if (!isServiceRunning(NearbyService.class)) {
+            startService(intent);
+        }
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
@@ -77,10 +81,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         }
         OwnContactViewModel.INSTANCE.setContact(contact);
 
-        intent = new Intent(this, NearbyService.class);
-        if (!isServiceRunning(NearbyService.class)) {
-            startService(intent);
-        }
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
