@@ -29,7 +29,6 @@ public class NoPictureDialogFragment extends DialogFragment {
                 .setNegativeButton(R.string.nope, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        ((OwnContactActivity)getActivity()).saveContact();
                         ((OwnContactActivity)getActivity()).startNearbyActivity();
                     }
                 });

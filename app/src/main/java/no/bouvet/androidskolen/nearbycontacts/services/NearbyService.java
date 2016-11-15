@@ -1,5 +1,6 @@
 package no.bouvet.androidskolen.nearbycontacts.services;
 
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
@@ -44,7 +45,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     private List<ContactDetectedListener> contactDetectedListeners = new ArrayList<>();
     private GoogleApiClient googleApiClient;
     private Message activeMessage;
-    private Contact contact;
 
     private final static String TAG = NearbyService.class.getSimpleName();
     private final static int REQUEST_RESOLVE_ERROR = 1;
@@ -63,11 +63,14 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Toast.makeText(this, "service starting", Toast.LENGTH_SHORT).show();
+
         addContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
         addContactDetectedListener(ContactLogListViewModel.INSTANCE);
         setupNearbyMessageListener();
         setupNearbyMessagesApi();
+
         googleApiClient.connect();
+
         contactDatabase = new ContactDatabase(getApplicationContext());
         return START_STICKY;
     }
@@ -75,6 +78,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public IBinder onBind(Intent intent) {
         Log.i(TAG, "NearbyService bound");
+
         return mBinder;
     }
 
@@ -90,15 +94,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         unpublish();
     }
 
-    public void unsubscribeToMessages() {
-        Log.i(TAG, "Unsubscribing");
-        unsubscribe();
-    }
-
-    public void subscribeToMessages() {
-        Log.i(TAG, "Subscribing");
-        subscribe();
-    }
 
     private void setupNearbyMessageListener() {
         messageListener = new com.google.android.gms.nearby.messages.MessageListener() {
@@ -230,7 +225,20 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult result) {
         if (result.hasResolution()) {
-            Log.e(TAG, "GoogleApiClient connection failed");
+
+            PendingIntent.OnFinished onFinished = new PendingIntent.OnFinished() {
+                @Override
+                public void onSendFinished(PendingIntent pendingIntent, Intent intent, int i, String s, Bundle bundle) {
+                    googleApiClient.connect();
+                }
+            };
+
+            PendingIntent resolution = result.getResolution();
+            try {
+                resolution.send(REQUEST_RESOLVE_ERROR, onFinished, null);
+            } catch (PendingIntent.CanceledException e) {
+                Log.e(TAG, "GoogleApiClient connection not opted in", e);
+            }
         } else {
             Log.e(TAG, "GoogleApiClient connection failed");
         }
