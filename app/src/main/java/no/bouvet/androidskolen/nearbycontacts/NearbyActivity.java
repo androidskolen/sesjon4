@@ -36,6 +36,10 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         addNearbyContactsFragmentIfNotExists();
         preferences = new Preferences();
 
+        Contact contact = preferences.createContactFromPreferences(getApplicationContext());
+
+        OwnContactViewModel.INSTANCE.setContact(contact);
+
         intent = new Intent(getApplicationContext(), NearbyService.class);
         if (!isServiceRunning(NearbyService.class)) {
             startService(intent);
@@ -71,13 +75,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         super.onStart();
 
         Log.d(TAG, "[onStart]");
-
-        Contact contact = preferences.createContactFromPreferences(getApplicationContext());
-        if (contact == null) {
-            // Vi dialog om at man må gå og fylle ut informasjon om seg selv.
-            return;
-        }
-        OwnContactViewModel.INSTANCE.setContact(contact);
     }
 
     @Override

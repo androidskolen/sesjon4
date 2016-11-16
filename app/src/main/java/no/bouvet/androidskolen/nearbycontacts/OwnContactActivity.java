@@ -126,14 +126,17 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
         switch (buttonView.getId()) {
             case R.id.publish_toggle:
+                if (OwnContactViewModel.INSTANCE.getContact().isPublish() == isChecked) {
+                    break;
+                }
                 if (isChecked) {
                     handlePublish();
                 } else {
+                    saveContact();
                     mService.unPublishContact();
                 }
                 break;
         }
-        saveContact();
     }
 
     private void handlePublish() {

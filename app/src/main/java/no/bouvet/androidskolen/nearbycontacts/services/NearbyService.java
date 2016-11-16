@@ -89,12 +89,14 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         Log.i(TAG, "[onUnbind]");
         return true;
     }
+
     @Override
     public void onRebind(Intent intent) {
         // A client is binding to the service with bindService(),
         // after onUnbind() has already been called
         Log.i(TAG, "[onRebind]");
     }
+
     @Override
     public void onDestroy() {
         // The service is no longer used and is being destroyed
@@ -222,7 +224,8 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     private void publishContactInternally() {
         Log.i(TAG, "[publishContactInternally]");
         if (googleApiClient.isConnected()) {
-            if (OwnContactViewModel.INSTANCE.getContact().isPublish()) {
+            if (OwnContactViewModel.INSTANCE.getContact() != null &&
+                    OwnContactViewModel.INSTANCE.getContact().isPublish()) {
                 publish(OwnContactViewModel.INSTANCE.getContact());
             }
         } else {
@@ -235,7 +238,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         Log.i(TAG, "[onConnected]");
-        subscribe();
         publishContactInternally();
         subscribe();
     }
