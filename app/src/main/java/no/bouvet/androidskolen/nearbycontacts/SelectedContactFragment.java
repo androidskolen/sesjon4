@@ -78,8 +78,11 @@ public class SelectedContactFragment extends Fragment implements ModelUpdateList
 
     @Override
     public void onClick(View view) {
-
-        new SaveContactTask().execute();
+        // TODO oppgave 3
+        // Start en AsyncTask (som dere må implementere) som kaller getExistingContactId(Contact) (denne metoden må implementeres) for å se om det finnes en fra før.
+        // Asynctasken skal kjøre createContentProviderOperations(Contact, foundContactId) i en bakgrunnstråd som returnerer en liste med operasjoner som
+        // skal kjøres som en batch.
+        // Dersom applyBatch på ContentResolver går gjennom, skal det vises en toast om at contacten er persistert.
     }
 
     @Override
@@ -96,43 +99,6 @@ public class SelectedContactFragment extends Fragment implements ModelUpdateList
         }
     }
 
-    public class SaveContactTask extends AsyncTask<Void, Void, Integer> {
-
-        private static final int SUCCESS = 0;
-        private static final int FAILED = 1;
-
-        @Override
-        protected Integer doInBackground(Void... voids) {
-            Contact contact = SelectedContactViewModel.INSTANCE.getContact();
-            if (contact == null) return FAILED;
-
-            String foundContactId = getExistingContactId(contact);
-            ArrayList<ContentProviderOperation> ops = createContentProviderOperations(contact, foundContactId);
-
-            try{
-                // Executing all the insert operations as a single database transaction
-                getContext().getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
-
-            }catch (RemoteException e) {
-                e.printStackTrace();
-                return FAILED;
-            }catch (OperationApplicationException e) {
-                e.printStackTrace();
-                return FAILED;
-            }
-
-            return SUCCESS;
-        }
-
-        @Override
-        protected void onPostExecute(Integer result) {
-            if (result == SUCCESS) {
-                Toast.makeText(getContext(), "Contact is successfully saved", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(getContext(), "Failed to save contact", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
 
     private ArrayList<ContentProviderOperation> createContentProviderOperations(Contact contact, String foundContactId) {
         if (foundContactId != null) {
@@ -229,26 +195,10 @@ public class SelectedContactFragment extends Fragment implements ModelUpdateList
 
     @Nullable
     private String getExistingContactId(Contact contact) {
-        Uri contactUri = ContactsContract.Contacts.CONTENT_URI;
-
-        String[] projection = {
-                ContactsContract.Contacts.DISPLAY_NAME,
-                ContactsContract.Contacts._ID
-        };
-
-        String selectionClause = ContactsContract.Contacts.DISPLAY_NAME_PRIMARY + " = ?";
-        String[] selectionArgs = {contact.getName()};
-
-        String foundContactId = null;
-        try (Cursor cursor = getContext().getContentResolver().query(contactUri, projection, selectionClause, selectionArgs, null)) {
-
-            if (cursor != null && cursor.moveToFirst()) {
-                // Use first hit
-                int idIndex = cursor.getColumnIndex(ContactsContract.Contacts._ID);
-                foundContactId = cursor.getString(idIndex);
-            }
-        }
-        return foundContactId;
+        // TODO oppgave 3
+        // Søk i Contacts tabellen etter en kontakt med samme navn som Contact
+        // Returner ContactsContract.Contacts._ID dersom den finnes fra før.
+        return "";
     }
 
 
