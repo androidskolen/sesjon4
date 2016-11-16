@@ -35,11 +35,9 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     private EditText userEmailEditText;
     private EditText userTelephoneEditText;
     private ImageView userPicture;
-    private Switch publishSwitch;
 
     private Preferences preferences;
-    NearbyService mService;
-    boolean mBound;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,9 +54,6 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
         Button publishContactButton = (Button) findViewById(R.id.publish_button);
         publishContactButton.setOnClickListener(this);
 
-        publishSwitch = (Switch) findViewById(R.id.publish_toggle);
-        publishSwitch.setOnCheckedChangeListener(this);
-
         userNameEditText = (EditText) findViewById(R.id.user_name_editText);
         userEmailEditText = (EditText) findViewById(R.id.user_email_editText);
         userTelephoneEditText = (EditText) findViewById(R.id.user_telephone_editText);
@@ -66,8 +61,6 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
 
         preferences = new Preferences();
 
-        Intent intent = new Intent(getApplicationContext(), NearbyService.class);
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -77,23 +70,15 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     }
 
     private void populateUiFromPrefrences() {
-        // Vi kan ikke populere UI før vi har bundet oss til NearbyService. Dette kommer av at
-        // vi risikerer at kallet til publishSwitch.setChecked() vil igjen føre til
-        // en onCheckedChanged som igjen vil forsøke å kalle enten mService.unPublishContact eller
-        // mService.publishContact. Dette vil feile før vi har bundet oss til tjenesten.
-        if (mBound) {
-            Contact contact = preferences.createContactFromPreferences(getApplicationContext());
-            if (contact != null) {
-                userNameEditText.setText(contact.getName());
-                userEmailEditText.setText(contact.getEmail());
-                userTelephoneEditText.setText(contact.getTelephone());
-                if (contact.getPicture() != null) {
-                    userPicture.setImageBitmap(contact.getPicture());
-                }
-                publishSwitch.setChecked(contact.isPublish());
+
+        Contact contact = preferences.createContactFromPreferences(getApplicationContext());
+        if (contact != null) {
+            userNameEditText.setText(contact.getName());
+            userEmailEditText.setText(contact.getEmail());
+            userTelephoneEditText.setText(contact.getTelephone());
+            if (contact.getPicture() != null) {
+                userPicture.setImageBitmap(contact.getPicture());
             }
-        } else {
-            Log.i(TAG, "Could not populateUiFromPreferences since service binding is not complete.");
         }
     }
 
@@ -101,10 +86,6 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
     protected void onStop() {
         super.onStop();
         preferences.saveContactToPreferences(createContactFromInput(), getApplicationContext());
-        if (mBound) {
-            unbindService(mConnection);
-            mBound = false;
-        }
     }
 
     @Override
@@ -133,7 +114,6 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
                     handlePublish();
                 } else {
                     saveContact();
-                    mService.unPublishContact();
                 }
                 break;
         }
@@ -144,7 +124,6 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
             startNoPictureDialogFragment();
         } else {
             saveContact();
-            mService.publishContact();
         }
     }
 
@@ -202,8 +181,7 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
         String email = userEmailEditText.getText().toString();
         String telephone = userTelephoneEditText.getText().toString();
         String picture = getEncodedPicture();
-        boolean publish = publishSwitch.isChecked();
-        return new Contact(name, email, telephone, picture, publish);
+        return new Contact(name, email, telephone, picture, true);
     }
 
     private String getEncodedPicture() {
@@ -224,21 +202,5 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
             return "";
         }
     }
-
-    private ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            NearbyService.NearbyBinder binder = (NearbyService.NearbyBinder) service;
-            mService = binder.getService();
-            mBound = true;
-            populateUiFromPrefrences();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            mBound = false;
-        }
-    };
 
 }

@@ -49,8 +49,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     private final static String TAG = NearbyService.class.getSimpleName();
     private final static int REQUEST_RESOLVE_ERROR = 1;
 
-    private final IBinder mBinder = new NearbyBinder();
-
     public NearbyService() {
         super();
         Log.i(TAG, "Created NearbyService");
@@ -61,43 +59,8 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        Toast.makeText(this, "service starting", Toast.LENGTH_SHORT).show();
-
-        addContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
-        setupNearbyMessageListener();
-        setupNearbyMessagesApi();
-
-        googleApiClient.connect();
-
-        return START_NOT_STICKY;
-    }
-
-    @Override
     public IBinder onBind(Intent intent) {
-        Log.i(TAG, "NearbyService bound");
-
-        return mBinder;
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        // All clients have unbound with unbindService()
-        Log.i(TAG, "[onUnbind]");
-        return true;
-    }
-
-    @Override
-    public void onRebind(Intent intent) {
-        // A client is binding to the service with bindService(),
-        // after onUnbind() has already been called
-        Log.i(TAG, "[onRebind]");
-    }
-
-    @Override
-    public void onDestroy() {
-        // The service is no longer used and is being destroyed
-        Log.i(TAG, "[onDestroy]");
+        return null;
     }
 
     // Public metoder utgjør interfacet vi tilbyr ut fra tjenesten.
@@ -278,9 +241,4 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         }
     }
 
-    public class NearbyBinder extends Binder {
-        public NearbyService getService() {
-            return NearbyService.this;
-        }
-    }
 }
