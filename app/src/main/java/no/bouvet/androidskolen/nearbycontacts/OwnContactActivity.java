@@ -78,9 +78,9 @@ public class OwnContactActivity extends AppCompatActivity implements View.OnClic
 
     private void populateUiFromPrefrences() {
         // Vi kan ikke populere UI før vi har bundet oss til NearbyService. Dette kommer av at
-        // vi risikerer at kallet til publicSwitch.setChecked() vil igjen føre til
+        // vi risikerer at kallet til publishSwitch.setChecked() vil igjen føre til
         // en onCheckedChanged som igjen vil forsøke å kalle enten mService.unPublishContact eller
-        // mService.publisContact. Dette vil feile før vi har bundet oss til tjenesten.
+        // mService.publishContact. Dette vil feile før vi har bundet oss til tjenesten.
         if (mBound) {
             Contact contact = preferences.createContactFromPreferences(getApplicationContext());
             if (contact != null) {

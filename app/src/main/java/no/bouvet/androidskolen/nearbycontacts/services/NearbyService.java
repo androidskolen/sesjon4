@@ -54,6 +54,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
 
     public NearbyService() {
         super();
+        Log.i(TAG, "Created NearbyService");
     }
 
     public void addContactDetectedListener(ContactDetectedListener listener) {
@@ -72,7 +73,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         googleApiClient.connect();
 
         contactDatabase = new ContactDatabase(getApplicationContext());
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     @Override
@@ -80,6 +81,24 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         Log.i(TAG, "NearbyService bound");
 
         return mBinder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        // All clients have unbound with unbindService()
+        Log.i(TAG, "[onUnbind]");
+        return true;
+    }
+    @Override
+    public void onRebind(Intent intent) {
+        // A client is binding to the service with bindService(),
+        // after onUnbind() has already been called
+        Log.i(TAG, "[onRebind]");
+    }
+    @Override
+    public void onDestroy() {
+        // The service is no longer used and is being destroyed
+        Log.i(TAG, "[onDestroy]");
     }
 
     // Public metoder utgjør interfacet vi tilbyr ut fra tjenesten.
@@ -203,9 +222,11 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     private void publishContactInternally() {
         Log.i(TAG, "[publishContactInternally]");
         if (googleApiClient.isConnected()) {
+            if (OwnContactViewModel.INSTANCE.getContact().isPublish()) {
+                publish(OwnContactViewModel.INSTANCE.getContact());
+            }
+        } else {
             Log.i(TAG, "googleApiClient not connected, can not publish");
-            publish(OwnContactViewModel.INSTANCE.getContact());
-
         }
     }
 
@@ -216,6 +237,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         Log.i(TAG, "[onConnected]");
         subscribe();
         publishContactInternally();
+        subscribe();
     }
 
     @Override

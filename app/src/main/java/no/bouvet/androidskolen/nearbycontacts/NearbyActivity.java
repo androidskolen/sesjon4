@@ -26,8 +26,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
 
     private final static String TAG = NearbyActivity.class.getSimpleName();
     private Preferences preferences;
-    NearbyService mService;
-    boolean mBound = false;
     private Intent intent;
 
     @Override
@@ -38,7 +36,7 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         addNearbyContactsFragmentIfNotExists();
         preferences = new Preferences();
 
-        intent = new Intent(this, NearbyService.class);
+        intent = new Intent(getApplicationContext(), NearbyService.class);
         if (!isServiceRunning(NearbyService.class)) {
             startService(intent);
         }
@@ -80,18 +78,12 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             return;
         }
         OwnContactViewModel.INSTANCE.setContact(contact);
-
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         Log.d(TAG, "[onStop]");
-        if (mBound) {
-            unbindService(mConnection);
-            mBound = false;
-        }
         if (!isServiceRunning(NearbyService.class)) {
             stopService(intent);
         }
@@ -161,20 +153,4 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
         NearbyContactsListViewModel.INSTANCE.reset();
         SelectedContactViewModel.INSTANCE.reset();
     }
-
-    private ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            Log.i(TAG, "Bound to service");
-            NearbyService.NearbyBinder binder = (NearbyService.NearbyBinder) service;
-            mService = binder.getService();
-            mBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            mBound = false;
-        }
-    };
 }
