@@ -44,13 +44,7 @@ public class ContactDatabase extends SQLiteOpenHelper {
     }
 
     public boolean insertContact(Contact contact) {
-        SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues contentValues = new ContentValues();
-        contentValues.put("name", contact.getName());
-        contentValues.put("phone", contact.getTelephone());
-        contentValues.put("email", contact.getEmail());
-        contentValues.put("photo", contact.getEncodedPicture());
-        db.insert(CONTACTS_TABLE_NAME, null, contentValues);
+        // TODO oppgave 2.1 Lagre Contact informasjon i CONTACTS_TABLE_NAME
         return true;
     }
 
@@ -74,17 +68,8 @@ public class ContactDatabase extends SQLiteOpenHelper {
 
     @NonNull
     private List<Contact> executeQuery(String query) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        List<Contact> contactHistory = new ArrayList<>();
-        try (Cursor cursor = db.rawQuery(query, null)) {
-            while (cursor.moveToNext()) {
-                Contact contact = new Contact(
-                        cursor.getString(cursor.getColumnIndex("name")), null, null, null, false);
-                contact.setDateDiscovered(Timestamp.valueOf(cursor.getString(cursor.getColumnIndex("time_stamp"))));
-                contactHistory.add(contact);
-            }
-        }
-        return contactHistory;
+        // Todo oppgave 2.1
+        return null;
     }
 }
 

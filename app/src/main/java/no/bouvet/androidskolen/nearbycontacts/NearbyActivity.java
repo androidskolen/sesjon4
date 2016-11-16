@@ -137,8 +137,7 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
     }
 
     private void gotoContactLogActivity() {
-        Intent intent = new Intent(this, ContactLogActivity.class);
-        startActivity(intent);
+        // TODO oppgave 2.2 Start ContactLogActivity
     }
 
     private void gotoOwnContactActivity() {

@@ -20,10 +20,6 @@
             android:label="@string/ownActivity_name"
             android:parentActivityName=".NearbyActivity"></activity>
         <activity
-            android:name=".ContactLogActivity"
-            android:label="@string/contactLog_name"
-            android:parentActivityName=".NearbyActivity"></activity>
-        <activity
             android:name=".NearbyActivity"
             android:label="@string/nearby_contacts_activity_name">
             <intent-filter>

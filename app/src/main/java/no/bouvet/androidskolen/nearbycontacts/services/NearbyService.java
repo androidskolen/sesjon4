@@ -50,7 +50,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     private final static int REQUEST_RESOLVE_ERROR = 1;
 
     private final IBinder mBinder = new NearbyBinder();
-    private ContactDatabase contactDatabase;
 
     public NearbyService() {
         super();
@@ -66,13 +65,11 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         Toast.makeText(this, "service starting", Toast.LENGTH_SHORT).show();
 
         addContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
-        addContactDetectedListener(ContactLogListViewModel.INSTANCE);
         setupNearbyMessageListener();
         setupNearbyMessagesApi();
 
         googleApiClient.connect();
 
-        contactDatabase = new ContactDatabase(getApplicationContext());
         return START_NOT_STICKY;
     }
 
@@ -132,7 +129,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
 
                 String msg = "Found contact: " + contact.getName();
 
-                contactDatabase.insertContact(contact);
 
                 Toast toast = Toast.makeText(NearbyService.this, msg, Toast.LENGTH_LONG);
                 toast.show();
