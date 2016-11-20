@@ -25,5 +25,7 @@
     <string name="contactLog_name">Contact Log</string>
     <string name="show_distinct_contacts">Show Distinct contacts</string>
     <string name="show_all">Show All</string>
+    <string name="notification_title">Nearby</string>
+    <string name="notification_text">Something</string>
 
 </resources>

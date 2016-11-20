@@ -25,7 +25,6 @@ import no.bouvet.androidskolen.nearbycontacts.views.AboutView;
 public class NearbyActivity extends AppCompatActivity implements ContactSelectedListener {
 
     private final static String TAG = NearbyActivity.class.getSimpleName();
-    private final static NearbyNotifications nearbyNotifications = new NearbyNotifications();
     private Preferences preferences;
     private Intent intent;
 
@@ -46,8 +45,7 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             startService(intent);
         }
 
-        getApplication().registerActivityLifecycleCallbacks(nearbyNotifications);
-
+        NearbyNotifications.INSTANCE.listenForActivityLifeCycle(getApplication());
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
