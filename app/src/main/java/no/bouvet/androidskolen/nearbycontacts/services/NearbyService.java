@@ -57,6 +57,8 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         Log.i(TAG, "Created NearbyService");
     }
 
+
+
     public void addContactDetectedListener(ContactDetectedListener listener) {
         contactDetectedListeners.add(listener);
     }

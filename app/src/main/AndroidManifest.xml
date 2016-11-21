@@ -18,11 +18,13 @@
         <activity
             android:name=".OwnContactActivity"
             android:label="@string/ownActivity_name"
-            android:parentActivityName=".NearbyActivity"></activity>
+            android:parentActivityName=".NearbyActivity"/>
+
         <activity
             android:name=".ContactLogActivity"
             android:label="@string/contactLog_name"
-            android:parentActivityName=".NearbyActivity"></activity>
+            android:parentActivityName=".NearbyActivity"/>
+
         <activity
             android:name=".NearbyActivity"
             android:label="@string/nearby_contacts_activity_name">
@@ -36,6 +38,13 @@
         <service
             android:name=".services.NearbyService"
             android:exported="false" />
+
+        <receiver android:name=".NearbyNotificationReceiver">
+            <intent-filter>
+                <action android:name="no.bouvet.androidskolen.nearbycontacts.TURNOFF" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

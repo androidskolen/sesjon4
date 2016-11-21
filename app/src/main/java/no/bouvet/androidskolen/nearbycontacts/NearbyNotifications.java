@@ -21,7 +21,10 @@ public enum  NearbyNotifications implements Application.ActivityLifecycleCallbac
 
     INSTANCE;
 
+    public final static String TURN_OFF_NEARBY = "no.bouvet.androidskolen.nearbycontacts.TURNOFF";
+
     private final static int NOTIFICATION_ID = 123;
+
     private final AtomicInteger activityResumedCounter = new AtomicInteger();
 
     private boolean listening;
@@ -58,7 +61,7 @@ public enum  NearbyNotifications implements Application.ActivityLifecycleCallbac
 
     private Notification createNotification() {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(applicationContext)
-                .setContentTitle(applicationContext.getResources().getString(R.string.notification_title))
+                .setContentTitle(applicationContext.getResources().getString(R.string.app_name))
                 .setContentText(applicationContext.getResources().getString(R.string.notification_text))
                 .setSmallIcon(R.drawable.common_google_signin_btn_icon_light);
 
@@ -68,6 +71,15 @@ public enum  NearbyNotifications implements Application.ActivityLifecycleCallbac
         stackBuilder.addNextIntent(intent);
         PendingIntent pendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(pendingIntent);
+
+        Intent broadcastIntent = new Intent();
+        broadcastIntent.setAction(TURN_OFF_NEARBY);
+        PendingIntent broadcast = PendingIntent.getBroadcast(applicationContext, 12, broadcastIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.addAction(R.drawable.common_google_signin_btn_icon_dark, "Turn off", broadcast);
+
+        Intent activityIntent = new Intent(applicationContext, OwnContactActivity.class);
+        PendingIntent activity = PendingIntent.getActivity(applicationContext, 1, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.addAction(R.drawable.common_google_signin_btn_icon_dark_focused, "Settings", activity);
 
         return builder.build();
     }
