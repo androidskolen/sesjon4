@@ -26,7 +26,7 @@
     <string name="show_distinct_contacts">Show Distinct contacts</string>
     <string name="show_all">Show All</string>
     <string name="notification_title">Nearby</string>
-    <string name="notification_started_text">Nearby messages is still sucking your battery dry!</string>
+    <string name="notification_started_text">Nearby messages is sucking your battery dry!</string>
     <string name="notification_stopped_text">Nearby messages is idling..</string>
 
 </resources>
