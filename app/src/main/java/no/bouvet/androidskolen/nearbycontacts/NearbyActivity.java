@@ -45,7 +45,6 @@ public class NearbyActivity extends AppCompatActivity implements ContactSelected
             startService(intent);
         }
 
-        NearbyNotifications.INSTANCE.listenForActivityLifeCycle(getApplication());
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {

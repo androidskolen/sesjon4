@@ -1,123 +1,83 @@
 package no.bouvet.androidskolen.nearbycontacts;
 
 
-import android.app.Activity;
-import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
-import android.util.Log;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-public enum  NearbyNotifications implements Application.ActivityLifecycleCallbacks {
+public enum  NearbyNotifications {
 
     INSTANCE;
 
     public final static String TURN_OFF_NEARBY = "no.bouvet.androidskolen.nearbycontacts.TURNOFF";
+    public final static String TURN_ON_NEARBY = "no.bouvet.androidskolen.nearbycontacts.TURNON";
 
     private final static int NOTIFICATION_ID = 123;
 
-    private final AtomicInteger activityResumedCounter = new AtomicInteger();
-
-    private boolean listening;
-    private Context applicationContext;
     private NotificationManager notificationManager;
 
-    public void listenForActivityLifeCycle(Application application) {
-        if (!listening) {
-            application.registerActivityLifecycleCallbacks(this);
-            listening = true;
+
+    public void updateNotification(Context context, boolean isConnectedToNearby) {
+        if (notificationManager == null) {
+            notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         }
-        applicationContext = application;
-        notificationManager = (NotificationManager) applicationContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification notification = createNotification(context, isConnectedToNearby);
+        notificationManager.notify(NOTIFICATION_ID, notification);
     }
 
-    private void checkIfNotificationShouldBeDisplayed() {
-        Handler handler = new Handler(Looper.getMainLooper());
-        handler.postDelayed(createNotificationTask(), 500);
+    public void removeNotification(Context context) {
+        notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(NOTIFICATION_ID);
     }
 
-    private Runnable createNotificationTask() {
-        return new Runnable() {
-            @Override
-            public void run() {
-                if (activityResumedCounter.get() == 0) {
-                    Log.d("NOTIFICATION", "Showing notification since no activities are running");
-                    Notification notification = createNotification();
+    private Notification createNotification(Context context, boolean isConnectedToNearby) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context)
+                .setContentTitle(context.getResources().getString(R.string.app_name))
+                .setContentText(getContentText(context, isConnectedToNearby))
+                .setSmallIcon(R.mipmap.ic_launcher);
 
-                    notificationManager.notify(NOTIFICATION_ID, notification);
-                }
-            }
-        };
-    }
-
-    private Notification createNotification() {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(applicationContext)
-                .setContentTitle(applicationContext.getResources().getString(R.string.app_name))
-                .setContentText(applicationContext.getResources().getString(R.string.notification_text))
-                .setSmallIcon(R.drawable.common_google_signin_btn_icon_light);
-
-        Intent intent = new Intent(applicationContext, NearbyActivity.class);
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(applicationContext);
+        // Set intent that is fired if main content is pressed
+        Intent intent = new Intent(context, NearbyActivity.class);
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
         stackBuilder.addParentStack(NearbyActivity.class);
         stackBuilder.addNextIntent(intent);
         PendingIntent pendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(pendingIntent);
 
+        // Add an action for turning on and off use of nearby messages
         Intent broadcastIntent = new Intent();
-        broadcastIntent.setAction(TURN_OFF_NEARBY);
-        PendingIntent broadcast = PendingIntent.getBroadcast(applicationContext, 12, broadcastIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        builder.addAction(R.drawable.common_google_signin_btn_icon_dark, "Turn off", broadcast);
+        broadcastIntent.setAction(getBroadCastActionName(isConnectedToNearby));
+        PendingIntent broadcast = PendingIntent.getBroadcast(context, 12, broadcastIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.addAction(getAction(isConnectedToNearby, broadcast));
 
-        Intent activityIntent = new Intent(applicationContext, OwnContactActivity.class);
-        PendingIntent activity = PendingIntent.getActivity(applicationContext, 1, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        builder.addAction(R.drawable.common_google_signin_btn_icon_dark_focused, "Settings", activity);
+        // Add an action that starts an Activity.
+        Intent activityIntent = new Intent(context, OwnContactActivity.class);
+        PendingIntent activity = PendingIntent.getActivity(context, 1, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.addAction(R.drawable.notification_settings, "Settings", activity);
+
+        builder.setPriority(NotificationCompat.PRIORITY_HIGH);
 
         return builder.build();
     }
 
-    @Override
-    public void onActivityResumed(Activity activity) {
-        activityResumedCounter.incrementAndGet();
-        notificationManager.cancel(NOTIFICATION_ID);
+    private String getContentText(Context context, boolean isConnectedToNearby) {
+        if (isConnectedToNearby) return context.getResources().getString(R.string.notification_started_text);
+        else return context.getResources().getString(R.string.notification_stopped_text);
     }
 
-    @Override
-    public void onActivityPaused(Activity activity) {
-        activityResumedCounter.decrementAndGet();
-        checkIfNotificationShouldBeDisplayed();
+    private String getBroadCastActionName(boolean isConnectedToNearby) {
+        if (isConnectedToNearby) return TURN_OFF_NEARBY;
+        else return TURN_ON_NEARBY;
     }
 
-    @Override
-    public void onActivityCreated(Activity activity, Bundle bundle) {
-
+    private NotificationCompat.Action getAction(boolean isConnectedToNearby, PendingIntent pendingIntent) {
+        if (isConnectedToNearby) return new NotificationCompat.Action(R.drawable.notification_checked, "Turn off", pendingIntent);
+        else return new NotificationCompat.Action(R.drawable.notification_unchecked, "Turn on", pendingIntent);
     }
 
-    @Override
-    public void onActivityStarted(Activity activity) {
 
-    }
-
-    @Override
-    public void onActivityStopped(Activity activity) {
-
-    }
-
-    @Override
-    public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {
-
-    }
-
-    @Override
-    public void onActivityDestroyed(Activity activity) {
-
-    }
 }

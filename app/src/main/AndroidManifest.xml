@@ -39,12 +39,6 @@
             android:name=".services.NearbyService"
             android:exported="false" />
 
-        <receiver android:name=".NearbyNotificationReceiver">
-            <intent-filter>
-                <action android:name="no.bouvet.androidskolen.nearbycontacts.TURNOFF" />
-            </intent-filter>
-        </receiver>
-
     </application>
 
 </manifest>

@@ -2,7 +2,10 @@ package no.bouvet.androidskolen.nearbycontacts.services;
 
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -29,6 +32,7 @@ import java.util.List;
 
 import no.bouvet.androidskolen.nearbycontacts.ContactDatabase;
 import no.bouvet.androidskolen.nearbycontacts.ContactDetectedListener;
+import no.bouvet.androidskolen.nearbycontacts.NearbyNotifications;
 import no.bouvet.androidskolen.nearbycontacts.models.Contact;
 import no.bouvet.androidskolen.nearbycontacts.models.ContactLogListViewModel;
 import no.bouvet.androidskolen.nearbycontacts.models.NearbyContactsListViewModel;
@@ -51,13 +55,13 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
 
     private final IBinder mBinder = new NearbyBinder();
     private ContactDatabase contactDatabase;
+    private boolean connected;
+    private NearbyNotificationReceiver nearbyNotificationReceiver;
 
     public NearbyService() {
         super();
         Log.i(TAG, "Created NearbyService");
     }
-
-
 
     public void addContactDetectedListener(ContactDetectedListener listener) {
         contactDetectedListeners.add(listener);
@@ -65,6 +69,13 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) {
+            Log.i(TAG, "[RESTART]");
+            NearbyNotifications.INSTANCE.removeNotification(getApplicationContext());
+            stopSelfResult(startId);
+            return START_NOT_STICKY;
+        }
+
         Toast.makeText(this, "service starting", Toast.LENGTH_SHORT).show();
 
         addContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
@@ -75,7 +86,8 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         googleApiClient.connect();
 
         contactDatabase = new ContactDatabase(getApplicationContext());
-        return START_NOT_STICKY;
+
+        return START_STICKY;
     }
 
     @Override
@@ -99,12 +111,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         Log.i(TAG, "[onRebind]");
     }
 
-    @Override
-    public void onDestroy() {
-        // The service is no longer used and is being destroyed
-        Log.i(TAG, "[onDestroy]");
-    }
-
     // Public metoder utgjør interfacet vi tilbyr ut fra tjenesten.
 
     public void publishContact() {
@@ -117,6 +123,20 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         unpublish();
     }
 
+    public void start() {
+        if (googleApiClient != null && !connected) {
+            googleApiClient.connect();
+        }
+    }
+
+    public void stop() {
+        if (connected) {
+            unsubscribe();
+            googleApiClient.disconnect();
+            connected = false;
+            NearbyNotifications.INSTANCE.updateNotification(getApplicationContext(), false);
+        }
+    }
 
     private void setupNearbyMessageListener() {
         messageListener = new com.google.android.gms.nearby.messages.MessageListener() {
@@ -240,6 +260,8 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         Log.i(TAG, "[onConnected]");
+        connected = true;
+        NearbyNotifications.INSTANCE.updateNotification(getApplicationContext(), true);
         publishContactInternally();
         subscribe();
     }
@@ -247,7 +269,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onConnectionSuspended(int i) {
         Log.e(TAG, "GoogleApiClient disconnected with cause: " + i);
-        unsubscribe();
+        connected = false;
     }
 
     @Override
@@ -287,6 +309,42 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     public class NearbyBinder extends Binder {
         public NearbyService getService() {
             return NearbyService.this;
+        }
+    }
+
+
+    @Override
+    public void onCreate() {
+        Log.i(TAG, "[onCreate]");
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(NearbyNotifications.TURN_ON_NEARBY);
+        filter.addAction(NearbyNotifications.TURN_OFF_NEARBY);
+
+        nearbyNotificationReceiver = new NearbyNotificationReceiver();
+        registerReceiver(nearbyNotificationReceiver, filter);
+    }
+
+    @Override
+    public void onDestroy() {
+        // The service is no longer used and is being destroyed
+        Log.i(TAG, "[onDestroy]");
+        unregisterReceiver(nearbyNotificationReceiver);
+    }
+
+    public class NearbyNotificationReceiver extends BroadcastReceiver {
+
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(NearbyNotifications.TURN_OFF_NEARBY)) {
+                Log.d("[onReceive]", "should turn off service");
+                stop();
+            }
+            else if (intent.getAction().equals(NearbyNotifications.TURN_ON_NEARBY)) {
+                Log.d("[onReceive]", "should turn on service");
+                start();
+            }
         }
     }
 }
