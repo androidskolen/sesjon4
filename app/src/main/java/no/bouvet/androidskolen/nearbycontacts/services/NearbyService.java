@@ -1,7 +1,10 @@
 package no.bouvet.androidskolen.nearbycontacts.services;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -11,6 +14,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -32,7 +36,9 @@ import java.util.List;
 
 import no.bouvet.androidskolen.nearbycontacts.ContactDatabase;
 import no.bouvet.androidskolen.nearbycontacts.ContactDetectedListener;
-import no.bouvet.androidskolen.nearbycontacts.NearbyNotifications;
+import no.bouvet.androidskolen.nearbycontacts.NearbyActivity;
+import no.bouvet.androidskolen.nearbycontacts.OwnContactActivity;
+import no.bouvet.androidskolen.nearbycontacts.R;
 import no.bouvet.androidskolen.nearbycontacts.models.Contact;
 import no.bouvet.androidskolen.nearbycontacts.models.ContactLogListViewModel;
 import no.bouvet.androidskolen.nearbycontacts.models.NearbyContactsListViewModel;
@@ -45,47 +51,32 @@ import no.bouvet.androidskolen.nearbycontacts.models.OwnContactViewModel;
 
 public class NearbyService extends Service implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
-    private MessageListener messageListener;
-    private List<ContactDetectedListener> contactDetectedListeners = new ArrayList<>();
-    private GoogleApiClient googleApiClient;
-    private Message activeMessage;
-
     private final static String TAG = NearbyService.class.getSimpleName();
     private final static int REQUEST_RESOLVE_ERROR = 1;
 
     private final IBinder mBinder = new NearbyBinder();
-    private ContactDatabase contactDatabase;
-    private boolean connected;
+
+    private List<ContactDetectedListener> contactDetectedListeners = new ArrayList<>();
     private NearbyNotificationReceiver nearbyNotificationReceiver;
-
-    public NearbyService() {
-        super();
-        Log.i(TAG, "Created NearbyService");
-    }
-
-    public void addContactDetectedListener(ContactDetectedListener listener) {
-        contactDetectedListeners.add(listener);
-    }
+    private NearbyNotifications nearbyNotifications;
+    private ContactDatabase contactDatabase;
+    private MessageListener messageListener;
+    private GoogleApiClient googleApiClient;
+    private Message activeMessage;
+    private boolean connected;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null) {
-            Log.i(TAG, "[RESTART]");
-            NearbyNotifications.INSTANCE.removeNotification(getApplicationContext());
+            Log.i(TAG, "onStartCommand called with intent == null. Indicates restart because of START_STICKY");
+            nearbyNotifications.removeNotification();
             stopSelfResult(startId);
             return START_NOT_STICKY;
         }
 
         Toast.makeText(this, "service starting", Toast.LENGTH_SHORT).show();
 
-        addContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
-        addContactDetectedListener(ContactLogListViewModel.INSTANCE);
-        setupNearbyMessageListener();
-        setupNearbyMessagesApi();
-
         googleApiClient.connect();
-
-        contactDatabase = new ContactDatabase(getApplicationContext());
 
         return START_STICKY;
     }
@@ -113,6 +104,10 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
 
     // Public metoder utgjør interfacet vi tilbyr ut fra tjenesten.
 
+    public void addContactDetectedListener(ContactDetectedListener listener) {
+        contactDetectedListeners.add(listener);
+    }
+
     public void publishContact() {
         Log.i(TAG, "Publishing contact");
         publishContactInternally();
@@ -121,21 +116,6 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     public void unPublishContact() {
         Log.i(TAG, "Unpublishing contact");
         unpublish();
-    }
-
-    public void start() {
-        if (googleApiClient != null && !connected) {
-            googleApiClient.connect();
-        }
-    }
-
-    public void stop() {
-        if (connected) {
-            unsubscribe();
-            googleApiClient.disconnect();
-            connected = false;
-            NearbyNotifications.INSTANCE.updateNotification(getApplicationContext(), false);
-        }
     }
 
     private void setupNearbyMessageListener() {
@@ -261,7 +241,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     public void onConnected(@Nullable Bundle bundle) {
         Log.i(TAG, "[onConnected]");
         connected = true;
-        NearbyNotifications.INSTANCE.updateNotification(getApplicationContext(), true);
+        nearbyNotifications.updateNotification();
         publishContactInternally();
         subscribe();
     }
@@ -275,22 +255,26 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult result) {
         if (result.hasResolution()) {
+            PendingIntent resolution = result.getResolution();
+            if (resolution != null) {
+                optInForNearby(resolution);
+            }
+        } else {
+            Log.e(TAG, "GoogleApiClient connection failed");
+        }
+    }
 
+    private void optInForNearby(PendingIntent resolution) {
+        try {
             PendingIntent.OnFinished onFinished = new PendingIntent.OnFinished() {
                 @Override
                 public void onSendFinished(PendingIntent pendingIntent, Intent intent, int i, String s, Bundle bundle) {
                     googleApiClient.connect();
                 }
             };
-
-            PendingIntent resolution = result.getResolution();
-            try {
-                resolution.send(REQUEST_RESOLVE_ERROR, onFinished, null);
-            } catch (PendingIntent.CanceledException e) {
-                Log.e(TAG, "GoogleApiClient connection not opted in", e);
-            }
-        } else {
-            Log.e(TAG, "GoogleApiClient connection failed");
+            resolution.send(REQUEST_RESOLVE_ERROR, onFinished, null);
+        } catch (PendingIntent.CanceledException e) {
+            Log.e(TAG, "GoogleApiClient connection not opted in", e);
         }
     }
 
@@ -316,11 +300,19 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
     @Override
     public void onCreate() {
         Log.i(TAG, "[onCreate]");
+        addContactDetectedListener(NearbyContactsListViewModel.INSTANCE);
+        addContactDetectedListener(ContactLogListViewModel.INSTANCE);
+
+        setupNearbyMessageListener();
+        setupNearbyMessagesApi();
+
+        contactDatabase = new ContactDatabase(getApplicationContext());
+
+        nearbyNotifications = new NearbyNotifications();
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(NearbyNotifications.TURN_ON_NEARBY);
         filter.addAction(NearbyNotifications.TURN_OFF_NEARBY);
-
         nearbyNotificationReceiver = new NearbyNotificationReceiver();
         registerReceiver(nearbyNotificationReceiver, filter);
     }
@@ -332,6 +324,79 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         unregisterReceiver(nearbyNotificationReceiver);
     }
 
+    public class  NearbyNotifications {
+
+        public final static String TURN_OFF_NEARBY = "no.bouvet.androidskolen.nearbycontacts.TURNOFF";
+        public final static String TURN_ON_NEARBY = "no.bouvet.androidskolen.nearbycontacts.TURNON";
+
+        private final static int NOTIFICATION_ID = 123;
+
+        private NotificationManager notificationManager;
+
+
+        public void updateNotification() {
+            if (notificationManager == null) {
+                notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            }
+            Notification notification = createNotification();
+            notificationManager.notify(NOTIFICATION_ID, notification);
+        }
+
+        public void removeNotification() {
+            notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.cancel(NOTIFICATION_ID);
+        }
+
+        private Notification createNotification() {
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext())
+                    .setContentTitle(getApplicationContext().getResources().getString(R.string.app_name))
+                    .setContentText(getContentText())
+                    .setSmallIcon(R.mipmap.ic_launcher);
+
+            // Set intent that is fired if main content is pressed
+            Intent intent = new Intent(getApplicationContext(), NearbyActivity.class);
+            TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
+            stackBuilder.addParentStack(NearbyActivity.class);
+            stackBuilder.addNextIntent(intent);
+            PendingIntent pendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+            builder.setContentIntent(pendingIntent);
+
+            // Add an action for turning on and off use of nearby messages
+            Intent broadcastIntent = new Intent();
+            broadcastIntent.setAction(getBroadCastActionName());
+            PendingIntent broadcast = PendingIntent.getBroadcast(getApplicationContext(), 12, broadcastIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            builder.addAction(getAction(broadcast));
+
+            // Add an action that starts an Activity.
+            intent = new Intent(getApplicationContext(), OwnContactActivity.class);
+            stackBuilder = TaskStackBuilder.create(getApplicationContext());
+            stackBuilder.addParentStack(NearbyActivity.class);
+            stackBuilder.addNextIntent(intent);
+            pendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+            builder.addAction(R.drawable.notification_settings, "Settings", pendingIntent);
+
+            builder.setPriority(NotificationCompat.PRIORITY_HIGH);
+
+            return builder.build();
+        }
+
+        private String getContentText() {
+            if (connected) return getApplicationContext().getResources().getString(R.string.notification_started_text);
+            else return getApplicationContext().getResources().getString(R.string.notification_stopped_text);
+        }
+
+        private String getBroadCastActionName() {
+            if (connected) return TURN_OFF_NEARBY;
+            else return TURN_ON_NEARBY;
+        }
+
+        private NotificationCompat.Action getAction(PendingIntent pendingIntent) {
+            if (connected) return new NotificationCompat.Action(R.drawable.notification_checked, "Turn off", pendingIntent);
+            else return new NotificationCompat.Action(R.drawable.notification_unchecked, "Turn on", pendingIntent);
+        }
+
+    }
+
     public class NearbyNotificationReceiver extends BroadcastReceiver {
 
 
@@ -339,11 +404,26 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(NearbyNotifications.TURN_OFF_NEARBY)) {
                 Log.d("[onReceive]", "should turn off service");
-                stop();
+                unsubscribeAndDisconnect();
             }
             else if (intent.getAction().equals(NearbyNotifications.TURN_ON_NEARBY)) {
                 Log.d("[onReceive]", "should turn on service");
-                start();
+                connect();
+            }
+        }
+
+        private void connect() {
+            if (googleApiClient != null && !connected) {
+                googleApiClient.connect();
+            }
+        }
+
+        private void unsubscribeAndDisconnect() {
+            if (connected) {
+                unsubscribe();
+                googleApiClient.disconnect();
+                connected = false;
+                nearbyNotifications.updateNotification();
             }
         }
     }
