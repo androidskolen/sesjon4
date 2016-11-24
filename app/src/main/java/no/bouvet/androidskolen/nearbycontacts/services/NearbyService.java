@@ -324,7 +324,7 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
         unregisterReceiver(nearbyNotificationReceiver);
     }
 
-    public class  NearbyNotifications {
+    public class NearbyNotifications {
 
         public final static String TURN_OFF_NEARBY = "no.bouvet.androidskolen.nearbycontacts.TURNOFF";
         public final static String TURN_ON_NEARBY = "no.bouvet.androidskolen.nearbycontacts.TURNON";
@@ -333,7 +333,10 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
 
         private NotificationManager notificationManager;
 
-
+        /**
+         * Creates a new Notification and either adds a new or updates an old in the Notifications
+         * Drawer
+         */
         public void updateNotification() {
             if (notificationManager == null) {
                 notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
@@ -342,6 +345,9 @@ public class NearbyService extends Service implements GoogleApiClient.Connection
             notificationManager.notify(NOTIFICATION_ID, notification);
         }
 
+        /**
+         * Removes the Notification from the Notfications Drawer
+         */
         public void removeNotification() {
             notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
             notificationManager.cancel(NOTIFICATION_ID);
